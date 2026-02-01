@@ -2,6 +2,7 @@ package com.hibiscusmc.hmccosmetics.database.types;
 
 import com.hibiscusmc.hmccosmetics.HMCCosmeticsPlugin;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
 
 import java.io.File;
@@ -13,6 +14,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.logging.Level;
 
+@Slf4j
 public class SQLiteData extends SQLData {
 
     private Connection connection;
@@ -47,12 +49,12 @@ public class SQLiteData extends SQLData {
     @Override
     @SuppressWarnings("resource")
     public void clear(UUID uniqueId) {
-        Bukkit.getScheduler().runTaskAsynchronously(HMCCosmeticsPlugin.getInstance(), () -> {
+        Bukkit.getAsyncScheduler().runNow(HMCCosmeticsPlugin.getInstance(), $ -> {
             try (PreparedStatement preparedSt = preparedStatement("DELETE FROM COSMETICDATABASE WHERE UUID=?;")){
                 preparedSt.setString(1, uniqueId.toString());
                 preparedSt.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("failed to delete user {} from cosmetic database", uniqueId, e);
             }
         });
     }

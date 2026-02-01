@@ -127,7 +127,9 @@ public class TypeCosmetic extends Type {
         Runnable run = () -> cosmeticHolder.updateCosmetic(cosmetic.getSlot());
         if (cosmetic instanceof CosmeticArmorType) {
             if (((CosmeticArmorType) cosmetic).getEquipSlot().equals(EquipmentSlot.OFF_HAND)) {
-                Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), run, 1);
+                viewer.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
+                    run.run();
+                }, null, 1);
             }
         }
         run.run();

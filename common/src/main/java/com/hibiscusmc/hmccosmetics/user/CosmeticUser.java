@@ -23,6 +23,7 @@ import com.hibiscusmc.hmccosmetics.user.manager.UserWardrobeManager;
 import com.hibiscusmc.hmccosmetics.util.HMCCInventoryUtils;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
 import com.hibiscusmc.hmccosmetics.util.packets.HMCCPacketManager;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import me.lojosho.hibiscuscommons.hooks.Hooks;
 import me.lojosho.hibiscuscommons.nms.NMSHandlers;
@@ -50,7 +51,7 @@ import java.util.logging.Level;
 public class CosmeticUser implements CosmeticHolder {
     @Getter
     private final UUID uniqueId;
-    private int taskId = -1;
+    private @Nullable ScheduledTask scheduledTask = null;
     private final HashMap<CosmeticSlot, Cosmetic> playerCosmetics = new HashMap<>();
     private UserWardrobeManager userWardrobeManager;
     private UserBalloonManager userBalloonManager;
@@ -178,8 +179,20 @@ public class CosmeticUser implements CosmeticHolder {
             return;
         }
 
-        final BukkitTask task = Bukkit.getScheduler().runTaskTimer(HMCCosmeticsPlugin.getInstance(), this::tick, 0, tickPeriod);
-        this.taskId = task.getTaskId();
+        final Player bukkitPlayer = this.getPlayer();
+        if(bukkitPlayer == null) {
+            return;
+        }
+
+        this.scheduledTask = bukkitPlayer.getScheduler().runAtFixedRate(
+            HMCCosmeticsPlugin.getInstance(),
+            $ -> {
+                this.tick();
+            },
+            () -> {},
+            1L,
+            tickPeriod
+        );
     }
 
     /**
@@ -204,8 +217,9 @@ public class CosmeticUser implements CosmeticHolder {
     }
 
     public void destroy() {
-        if(this.taskId != -1) { // ensure we're actually ticking this user.
-            Bukkit.getScheduler().cancelTask(taskId);
+        // ensure we're actually ticking this user.
+        if(scheduledTask != null && !scheduledTask.isCancelled()) {
+            scheduledTask.cancel();
         }
 
         despawnBackpack();
@@ -539,10 +553,13 @@ public class CosmeticUser implements CosmeticHolder {
                     WardrobeSettings.getTransitionStay(),
                     WardrobeSettings.getTransitionFadeOut()
             );
-            Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), () -> {
-                userWardrobeManager.end();
-                userWardrobeManager = null;
-            }, WardrobeSettings.getTransitionDelay());
+            final Player player = getPlayer();
+            if(player != null) {
+                player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
+                    userWardrobeManager.end();
+                    userWardrobeManager = null;
+                }, null, WardrobeSettings.getTransitionDelay());
+            }
         } else {
             userWardrobeManager.end();
             userWardrobeManager = null;

@@ -11,6 +11,7 @@ import com.hibiscusmc.hmccosmetics.gui.Menus;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUsers;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,17 +22,17 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(@NotNull PlayerJoinEvent event) {
         if (DatabaseSettings.isEnabledDelay()) {
             MessagesUtil.sendDebugMessages("Delay Enabled with " + DatabaseSettings.getDelayLength() + " ticks");
-            Bukkit.getScheduler().runTaskLater(
-                HMCCosmeticsPlugin.getInstance(),
-                () -> this.loadUserData(event.getPlayer()),
-                DatabaseSettings.getDelayLength()
-            );
+            Bukkit.getAsyncScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
+                this.loadUserData(event.getPlayer());
+            }, DatabaseSettings.getDelayLength() * 20L,  TimeUnit.MILLISECONDS);
         } else {
             this.loadUserData(event.getPlayer());
         }
@@ -46,7 +47,7 @@ public class PlayerConnectionListener implements Listener {
         if (preLoadEvent.isCancelled()) return;
 
         Database.get(playerId).thenAccept(userData -> {
-            Bukkit.getScheduler().runTask(HMCCosmeticsPlugin.getInstance(), () -> {
+            player.getScheduler().run(HMCCosmeticsPlugin.getInstance(), t -> {
                 CosmeticUser cosmeticUser = CosmeticUsers.getProvider()
                     .createCosmeticUser(playerId)
                     .initialize(userData);
@@ -59,11 +60,11 @@ public class PlayerConnectionListener implements Listener {
                 Bukkit.getPluginManager().callEvent(playerLoadEvent);
 
                 // And finally, launch an update for the cosmetics they have.
-                Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), () -> {
+                player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
                     if (cosmeticUser.getPlayer() == null) return;
                     cosmeticUser.updateCosmetic();
-                }, 4);
-            });
+                }, () -> {}, 4L);
+            }, () -> {});
         }).exceptionally(ex -> {
             MessagesUtil.sendDebugMessages("Unable to load Cosmetic User " + playerId + ". Exception: " + ex.getMessage());
             return null;

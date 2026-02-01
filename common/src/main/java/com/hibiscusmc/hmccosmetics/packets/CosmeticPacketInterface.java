@@ -186,7 +186,9 @@ public class CosmeticPacketInterface implements PacketInterface {
         CosmeticSlot cosmeticSlot = HMCCInventoryUtils.NMSCosmeticSlot(slotNumber);
         if (cosmeticSlot == null || !user.hasCosmeticInSlot(cosmeticSlot)) return PacketAction.NOTHING;
 
-        Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), () -> user.updateCosmetic(cosmeticSlot), 1);
+        player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(),  $ -> {
+            user.updateCosmetic(cosmeticSlot);
+        }, null, 1);
         MessagesUtil.sendDebugMessages("Packet fired, updated cosmetic " + cosmeticSlot);
         return PacketAction.NOTHING;
     }

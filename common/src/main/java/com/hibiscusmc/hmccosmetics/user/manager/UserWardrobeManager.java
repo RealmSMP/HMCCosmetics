@@ -205,13 +205,15 @@ public class UserWardrobeManager {
 
         if (WardrobeSettings.isEnabledTransition()) {
             MessagesUtil.sendTitle(
-                    user.getPlayer(),
-                    WardrobeSettings.getTransitionText(),
-                    WardrobeSettings.getTransitionFadeIn(),
-                    WardrobeSettings.getTransitionStay(),
-                    WardrobeSettings.getTransitionFadeOut()
+                user.getPlayer(),
+                WardrobeSettings.getTransitionText(),
+                WardrobeSettings.getTransitionFadeIn(),
+                WardrobeSettings.getTransitionStay(),
+                WardrobeSettings.getTransitionFadeOut()
             );
-            Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), run, WardrobeSettings.getTransitionDelay());
+            player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
+                run.run();
+            }, null, WardrobeSettings.getTransitionDelay());
         } else {
             run.run();
         }
