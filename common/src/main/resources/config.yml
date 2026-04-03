@@ -109,7 +109,7 @@ menu-settings:
     enabled: true
     # This is the cooldown in miliseconds for the menu. This is useful for servers that have a lot of players.
     # (So if a user clicks the menu, it won't spam the server with requesting it to refresh itself)
-    time: 1000
+    time: 100
   shading:
     # Below is the shading mechanism behind cosmetic items. This is a bit complicated, but it allows for a lot of customization.
     # The shading is done through the title and by shifting textures around. This is done by offsets.
@@ -154,6 +154,9 @@ hook-settings:
   hmccolor:
     # If HMCColor is available, prefer hmccolor dye menu rather than the internal menu. Requires a restart.
     prefer-hmccolor-menu: false
+  vulcan:
+    # Will ignore any violations in Vulcan if a player is within a wardrobe
+    exempt-checks-in-wardrobe: false
 wardrobe:
   # how much yaw should change per tick, set to 0 for none
   rotation-speed: 3
@@ -184,9 +187,9 @@ wardrobe:
     color: BLUE
   transition:
     enabled: true
-    # If you use ItemsAdder, set this to "<black>%img_title%
+    # If you use ItemsAdder, set this to "<black>%img_hmcc_title%
     # If you use Oraxen, set this to "<black><glyph:title>"
-    # If you use Nexo, set this to "<black>%nexo_title%" and use PlaceholderAPI
+    # If you use Nexo, set this to "<black><glyph:hmcc_title:colorable>" (alternatively, you can use PlaceholderAPI and put: "<black>%nexo_hmcc_title%" )
     text: "<black>"
     delay: 40
     title-fade-in: 1000 # milliseconds
