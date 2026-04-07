@@ -41,7 +41,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,7 +169,7 @@ public class CosmeticUser implements CosmeticHolder {
     /**
      * Start ticking against the {@link CosmeticUser}.
      * @implNote The tick-rate is determined by the tick period specified in the configuration, if it is less-than or equal to 0
-     * there will be no {@link BukkitTask} created, and the {@link CosmeticUser#taskId} will be -1
+     * there will be no {@link ScheduledTask} created, and {@link #scheduledTask} will remain {@code null}
      */
     public final void startTicking() {
         int tickPeriod = Settings.getTickPeriod();
@@ -601,8 +600,7 @@ public class CosmeticUser implements CosmeticHolder {
 
         org.bukkit.entity.Entity entity = getEntity();
 
-        UserBalloonManager userBalloonManager1 = new UserBalloonManager(this, entity.getLocation());
-        userBalloonManager1.getModelEntity().teleport(entity.getLocation().add(cosmeticBalloonType.getBalloonOffset()));
+        UserBalloonManager userBalloonManager1 = new UserBalloonManager(this, entity.getLocation().add(cosmeticBalloonType.getBalloonOffset()));
 
         userBalloonManager1.spawnModel(cosmeticBalloonType, getCosmeticColor(cosmeticBalloonType.getSlot()));
         userBalloonManager1.addPlayerToModel(this, cosmeticBalloonType, getCosmeticColor(cosmeticBalloonType.getSlot()));

@@ -329,17 +329,17 @@ public class PlayerGameListener implements Listener {
             user.getBalloonManager().getPufferfish().spawnPufferfish(npclocation.clone().add(cosmetic.getBalloonOffset()), viewer);
             HMCCPacketManager.sendLeashPacket(user.getBalloonManager().getPufferfishBalloonId(), user.getWardrobeManager().getNPC_ID(), viewer);
             HMCCPacketManager.sendTeleportPacket(user.getBalloonManager().getPufferfishBalloonId(), npclocation, false, viewer);
-            user.getBalloonManager().getModelEntity().teleport(npclocation);
+            user.getBalloonManager().setLocation(npclocation);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onPlayerMounted(EntityMountEvent event) {
+    public void onPlayerMounted(EntityMountEvent event) {
 		if (event.getEntity() instanceof Player player) {
             CosmeticUser user = CosmeticUsers.getUser(player);
             if (user == null) return;
 
-            Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(HMCCosmeticsPlugin.getInstance(), user::respawnBackpack, 1);
+            player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> user.respawnBackpack(), null, 1L);
 		}
 	}
 
@@ -349,7 +349,7 @@ public class PlayerGameListener implements Listener {
             CosmeticUser user = CosmeticUsers.getUser(player);
             if (user == null) return;
 
-            Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(HMCCosmeticsPlugin.getInstance(), user::respawnBackpack, 1);
+            player.getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> user.respawnBackpack(), null, 1L);
 		}
 	}
 
