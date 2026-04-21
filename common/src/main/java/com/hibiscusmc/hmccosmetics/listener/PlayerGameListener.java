@@ -95,6 +95,10 @@ public class PlayerGameListener implements Listener {
             user.leaveWardrobe(false);
         }
 
+        if (user.hasCosmeticInSlot(CosmeticSlot.BACKPACK)) {
+            user.despawnBackpack();
+        }
+
         event.getPlayer().getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
             if (user.getEntity() == null || user.isInWardrobe()) return; // fixes disconnecting when in wardrobe (the entity stuff)
 
@@ -105,7 +109,7 @@ public class PlayerGameListener implements Listener {
             }
 
             user.respawnBackpack();
-            user.respawnBalloon();
+            refreshTeleportedBalloon(user);
             user.updateCosmetic();
         }, null, 4L);
 
@@ -134,8 +138,33 @@ public class PlayerGameListener implements Listener {
             event.getPlayer().getScheduler().runDelayed(HMCCosmeticsPlugin.getInstance(), $ -> {
                 user.spawnBalloon((CosmeticBalloonType) user.getCosmetic(CosmeticSlot.BALLOON));
                 user.updateCosmetic();
+                refreshTeleportedBalloon(user);
             }, null, 4L);
         }
+    }
+
+    private void refreshTeleportedBalloon(@NotNull CosmeticUser user) {
+        if (!user.hasCosmeticInSlot(CosmeticSlot.BALLOON)) return;
+        if (user.getEntity() == null || user.isHidden()) return;
+
+        if (user.getBalloonManager() == null || !user.getBalloonManager().isValid()) {
+            user.respawnBalloon();
+        }
+
+        if (user.getBalloonManager() == null || !user.getBalloonManager().isValid()) return;
+
+        CosmeticBalloonType balloon = (CosmeticBalloonType) user.getCosmetic(CosmeticSlot.BALLOON);
+        Location balloonLocation = user.getEntity().getLocation().clone().add(balloon.getBalloonOffset());
+        if (Settings.isBalloonHeadForward()) balloonLocation.setPitch(0);
+
+        user.getBalloonManager().setLocation(balloonLocation);
+
+        List<Player> viewers = user.getBalloonManager().getPufferfish().refreshViewers(balloonLocation);
+        if (viewers.isEmpty()) return;
+
+        user.getBalloonManager().getPufferfish().spawnPufferfish(balloonLocation, viewers);
+        HMCCPacketManager.sendTeleportPacket(user.getBalloonManager().getPufferfishBalloonId(), balloonLocation, false, viewers);
+        HMCCPacketManager.sendLeashPacket(user.getBalloonManager().getPufferfishBalloonId(), user.getEntity().getEntityId(), viewers);
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)

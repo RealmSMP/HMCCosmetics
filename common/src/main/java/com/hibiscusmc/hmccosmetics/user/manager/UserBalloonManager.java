@@ -27,6 +27,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 public class UserBalloonManager {
@@ -38,9 +39,15 @@ public class UserBalloonManager {
     @Getter
     private UserBalloonPufferfish pufferfish;
     private final ArmorStand modelEntity;
+    private final UUID modelUniqueId;
+    private final int modelId;
+    private Location location;
+    private Vector velocity = new Vector();
+    private boolean removed = false;
 
     public UserBalloonManager(CosmeticUser user, @NotNull Location location) {
         this.user = user;
+        this.location = location.clone();
         this.pufferfish = new UserBalloonPufferfish(user.getUniqueId(), NMSHandlers.getHandler().getUtilHandler().getNextEntityId(), UUID.randomUUID());
         this.modelEntity = location.getWorld().spawn(location, ArmorStand.class, (e) -> {
             e.setInvisible(true);
@@ -53,6 +60,8 @@ public class UserBalloonManager {
             e.setAI(false);
             e.getPersistentDataContainer().set(HMCCServerUtils.getCosmemeticMobKey(), PersistentDataType.BOOLEAN, true);
         });
+        this.modelUniqueId = this.modelEntity.getUniqueId();
+        this.modelId = this.modelEntity.getEntityId();
     }
 
     public void spawnModel(@NotNull CosmeticBalloonType cosmeticBalloonType, Color color) {
@@ -76,51 +85,57 @@ public class UserBalloonManager {
                 MessagesUtil.sendDebugMessages("Invalid Model Engine Blueprint " + id, Level.SEVERE);
                 return;
             }
-            ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(modelEntity);
-            ActiveModel model = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint(id));
-            model.setCanHurt(false);
-            modeledEntity.addModel(model, false);
+            runOnModelEntity(entity -> {
+                ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(entity);
+                ActiveModel model = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint(id));
+                model.setCanHurt(false);
+                modeledEntity.addModel(model, false);
 
-            if (color != null) {
-                modeledEntity.getModels().forEach((d, singleModel) -> {
-                    if (cosmeticBalloonType.isDyeablePart(d)) {
-                        singleModel.setDefaultTint(color);
-                        singleModel.getModelRenderer().sendToClient(ModelEngineAPI.getNMSHandler().createParsers());
-                    }
-                });
-            }
+                if (color != null) {
+                    modeledEntity.getModels().forEach((d, singleModel) -> {
+                        if (cosmeticBalloonType.isDyeablePart(d)) {
+                            singleModel.setDefaultTint(color);
+                            singleModel.getModelRenderer().sendToClient(ModelEngineAPI.getNMSHandler().createParsers());
+                        }
+                    });
+                }
 
-            BukkitEntityData data = (BukkitEntityData) modeledEntity.getBase().getData();
-            data.setBlockedCullIgnoreRadius((double) Settings.getViewDistance());
-            data.getTracked().setPlayerPredicate(this::playerCheck);
+                BukkitEntityData data = (BukkitEntityData) modeledEntity.getBase().getData();
+                data.setBlockedCullIgnoreRadius((double) Settings.getViewDistance());
+                data.getTracked().setPlayerPredicate(this::playerCheck);
+            });
             return;
         }
         if (balloonType == BalloonType.ITEM) {
-            modelEntity.getEquipment().setHelmet(cosmeticBalloonType.getItem());
+            runOnModelEntity(entity -> entity.getEquipment().setHelmet(cosmeticBalloonType.getItem()));
         }
     }
 
     public void remove() {
+        if (removed) return;
+        removed = true;
+
         // This code is like a brick road, always bumpy.
         // Basically, the balloon viewers ignore people in wardrobe, which well, if your the user in the wardrobe, ain't including you.
         // This manually passes in the viewers for it to destroy, which includes the person in the wardrobe
         if (user.getPlayer() != null && user.isInWardrobe()) pufferfish.destroyPufferfish(List.of(user.getPlayer()));
         else pufferfish.destroyPufferfish();
 
-        if (balloonType == BalloonType.MODELENGINE) {
-            final ModeledEntity entity = ModelEngineAPI.getModeledEntity(modelEntity);
-            if (entity == null) {
-                MessagesUtil.sendDebugMessages("Balloon Removal Failed - Model Entity is Null");
-                return;
+        cosmeticBalloonType = null;
+        runOnModelEntity(entity -> {
+            if (balloonType == BalloonType.MODELENGINE) {
+                final ModeledEntity modeledEntity = ModelEngineAPI.getModeledEntity(entity);
+                if (modeledEntity == null) {
+                    MessagesUtil.sendDebugMessages("Balloon Removal Failed - Model Entity is Null");
+                } else {
+                    modeledEntity.destroy();
+                    MessagesUtil.sendDebugMessages("Balloon Model Engine Removal");
+                }
             }
 
-            entity.destroy();
-            MessagesUtil.sendDebugMessages("Balloon Model Engine Removal");
-        }
-
-        modelEntity.remove();
-        cosmeticBalloonType = null;
-        MessagesUtil.sendDebugMessages("Balloon Entity Removed");
+            entity.remove();
+            MessagesUtil.sendDebugMessages("Balloon Entity Removed");
+        }, true, 3);
     }
 
     public void addPlayerToModel(final CosmeticUser user, final CosmeticBalloonType cosmeticBalloonType) {
@@ -129,30 +144,34 @@ public class UserBalloonManager {
 
     public void addPlayerToModel(final CosmeticUser user, final CosmeticBalloonType cosmeticBalloonType, Color color) {
         if (balloonType == BalloonType.MODELENGINE) {
-            final ModeledEntity model = ModelEngineAPI.getModeledEntity(modelEntity);
-            if (model == null) {
-                spawnModel(cosmeticBalloonType, color);
-                MessagesUtil.sendDebugMessages("model is null");
-                return;
-            }
+            runOnModelEntity(entity -> {
+                final ModeledEntity model = ModelEngineAPI.getModeledEntity(entity);
+                if (model == null) {
+                    spawnModel(cosmeticBalloonType, color);
+                    MessagesUtil.sendDebugMessages("model is null");
+                    return;
+                }
 
-            MessagesUtil.sendDebugMessages("Show to player");
+                MessagesUtil.sendDebugMessages("Show to player");
+            });
             return;
         }
         if (balloonType == BalloonType.ITEM) {
-            modelEntity.getEquipment().setHelmet(user.getUserCosmeticItem(cosmeticBalloonType));
+            runOnModelEntity(entity -> entity.getEquipment().setHelmet(user.getUserCosmeticItem(cosmeticBalloonType)));
         }
     }
     public void removePlayerFromModel(final Player viewer) {
         if (balloonType == BalloonType.MODELENGINE) {
-            final ModeledEntity model = ModelEngineAPI.getModeledEntity(modelEntity);
-            if (model == null) return;
+            runOnModelEntity(entity -> {
+                final ModeledEntity model = ModelEngineAPI.getModeledEntity(entity);
+                if (model == null) return;
 
-            MessagesUtil.sendDebugMessages("Hidden from player");
+                MessagesUtil.sendDebugMessages("Hidden from player");
+            });
             return;
         }
         if (balloonType == BalloonType.ITEM) {
-            modelEntity.getEquipment().clear();
+            runOnModelEntity(entity -> entity.getEquipment().clear());
             return;
         }
     }
@@ -171,27 +190,29 @@ public class UserBalloonManager {
     }
 
     public UUID getModelUnqiueId() {
-        return getModelEntity().getUniqueId();
+        return modelUniqueId;
     }
 
     public int getModelId() {
-        return getModelEntity().getEntityId();
+        return modelId;
     }
 
     public Location getLocation() {
-        return this.getModelEntity().getLocation();
+        return location.clone();
     }
 
     public void setLocation(Location location) {
-        this.getModelEntity().teleportAsync(location);
+        this.location = location.clone();
+        runOnModelEntity(entity -> entity.teleportAsync(location));
     }
 
     public Vector getVelocity() {
-        return getModelEntity().getVelocity();
+        return velocity.clone();
     }
 
     public void setVelocity(Vector vector) {
-        this.getModelEntity().setVelocity(vector);
+        this.velocity = vector.clone();
+        runOnModelEntity(entity -> entity.setVelocity(vector));
     }
 
     public void sendRemoveLeashPacket(List<Player> viewer) {
@@ -206,6 +227,10 @@ public class UserBalloonManager {
         if (cosmeticBalloonType.isShowLead()) {
             HMCCPacketManager.sendLeashPacket(getPufferfishBalloonId(), entityId, getLocation());
         }
+    }
+
+    public boolean isValid() {
+        return !removed;
     }
 
     public enum BalloonType {
@@ -229,5 +254,32 @@ public class UserBalloonManager {
             }
         }
         return (!user.isHidden());
+    }
+
+    private void runOnModelEntity(@NotNull Consumer<ArmorStand> consumer) {
+        runOnModelEntity(consumer, false, 3);
+    }
+
+    private void runOnModelEntity(@NotNull Consumer<ArmorStand> consumer, boolean allowRemoved) {
+        runOnModelEntity(consumer, allowRemoved, 3);
+    }
+
+    private void runOnModelEntity(@NotNull Consumer<ArmorStand> consumer, boolean allowRemoved, int retriesLeft) {
+        modelEntity.getScheduler().run(HMCCosmeticsPlugin.getInstance(), task -> {
+            if ((!allowRemoved && removed) || !modelEntity.isValid()) return;
+            consumer.accept(modelEntity);
+        }, () -> {
+            if (!modelEntity.isValid()) {
+                removed = true;
+                return;
+            }
+
+            if (retriesLeft <= 0) {
+                MessagesUtil.sendDebugMessages("Balloon entity scheduler retired before task could run");
+                return;
+            }
+
+            runOnModelEntity(consumer, allowRemoved, retriesLeft - 1);
+        });
     }
 }

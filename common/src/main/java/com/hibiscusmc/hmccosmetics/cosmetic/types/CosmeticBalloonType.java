@@ -63,7 +63,7 @@ public class CosmeticBalloonType extends Cosmetic implements CosmeticUpdateBehav
         if (entity == null || userBalloonManager == null) return;
         if (user.isInWardrobe()) return;
 
-        if (!userBalloonManager.getModelEntity().isValid()) {
+        if (!userBalloonManager.isValid()) {
             user.respawnBalloon();
             return;
         }
@@ -88,7 +88,7 @@ public class CosmeticBalloonType extends Cosmetic implements CosmeticUpdateBehav
         if (entity == null || userBalloonManager == null) return;
         if (user.isInWardrobe()) return;
 
-        if (!userBalloonManager.getModelEntity().isValid()) {
+        if (!userBalloonManager.isValid()) {
             return;
         }
 
